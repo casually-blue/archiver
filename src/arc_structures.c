@@ -4,27 +4,53 @@
 #include<unistd.h>
 #include<sys/file.h>
 #include<fcntl.h>
+#include<errno.h>
 
 #include"arc_structures.h"
 
-void* memmap_file(char* filename) {
-  FILE* f = fopen(filename, "a");
+void create_empty_file(char* fname) {
+  FILE* f = fopen(fname, "a");
   fclose(f);
+}
 
-  int fd = open(filename, O_RDWR);
-  posix_fallocate(fd, 8192 * sizeof(char), 1);
+int create_sparse_file_of_n_bytes(char* fname, unsigned long int bytes) {
+  create_empty_file(fname);
 
-  if(fd == -1){
-    return NULL;
+  int fd;
+  if((fd = open(fname, O_WRONLY)) <= 0) {
+    return fd;
   }
 
-  void* map = mmap(0, 8192 * sizeof(char), PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
+  int error = posix_fallocate(fd, bytes * sizeof(char), 1);
 
-  if(!map){
-    return NULL;
-  }
+  if(error) return error;
 
   close(fd);
+
+  return 0;
+}
+
+void* create_map_from_fd(int fd, unsigned long int bytes) {
+  void* map = mmap(0, bytes * sizeof(char), PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
+  close(fd);
+
+  if(!map) 
+    return 0;
+
+
+  return map;
+}
+
+void* memmap_file(char* filename) {
+  if(create_sparse_file_of_n_bytes(filename, 8192) != 0)
+    return NULL;
+
+  int fd = open(filename, O_RDWR);
+
+  if(fd <= 0)
+    return NULL;
+
+  void* map = create_map_from_fd(fd, 8192);
 
   return map;
 }

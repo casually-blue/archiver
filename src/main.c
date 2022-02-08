@@ -11,6 +11,20 @@
 #include "args.h"
 #include "arc_structures.h"
 
+void print_if_dir(char* fname) {
+  int fd;
+  if((fd = open(fname, O_RDONLY)) <= 0) {return;}
+
+  struct stat fi;
+  fstat(fd, &fi);
+
+  if (S_ISDIR(fi.st_mode)) {
+    printf("directory: %s\n", fname);
+  }
+
+  close(fd);
+}
+
 int main(int argc, char** argv, char** envp){
   arguments* args = parse_args(argc, argv);
 
@@ -22,21 +36,9 @@ int main(int argc, char** argv, char** envp){
   }
 
   int current_position = 0;
-
   for(int i = 0; i < args->files_count; i++){
-    int fd;
-    if((fd = open(args->files[i], O_RDONLY)) <= 0) {
-      return -1;
-    }
-    struct stat fi;
-    fstat(fd, &fi);
-
-    if (S_ISDIR(fi.st_mode)) {
-      printf("directory: %s\n", args->files[i]);
-    }
-
-    close(fd);
-    current_position += sprintf(map+current_position, "%s: %d\n", args->files[i], current_position);
+      print_if_dir(args->files[i]);
+      current_position += sprintf(map+current_position, "%s: %d\n", args->files[i], current_position);
   }
 
   

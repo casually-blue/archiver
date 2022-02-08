@@ -25,6 +25,14 @@ void print_if_dir(char* fname) {
   close(fd);
 }
 
+void truncate_to_n(char* fname, int len) {
+  int fd = open(fname, O_WRONLY);
+
+  ftruncate(fd, len);
+
+  close(fd);
+}
+
 int main(int argc, char** argv, char** envp){
   arguments* args = parse_args(argc, argv);
 
@@ -36,22 +44,19 @@ int main(int argc, char** argv, char** envp){
   }
 
   int current_position = 0;
+
   for(int i = 0; i < args->files_count; i++){
       print_if_dir(args->files[i]);
+
       current_position += sprintf(map+current_position, "%s: %d\n", args->files[i], current_position);
   }
 
-  
-
-
   munmap(map, 20);
 
-  int fd = open(args->output_file, O_WRONLY);
-  ftruncate(fd, current_position);
-  close(fd);
+  truncate_to_n(args->output_file, current_position);
 
   free(args->files);
-  free(args->output_file);
+  //free(args->output_file);
   free(args);
 
   return 0;

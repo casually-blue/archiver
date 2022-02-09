@@ -8,6 +8,9 @@
 
 !.gitignore
 
+!libs
+!libs/*.a
+
 !CMakeLists.txt
 
 !structure.txt

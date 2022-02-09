@@ -123,13 +123,6 @@ void output_dir(char* dirname, arc_header_t* dir_info) {
 int main(int argc, char** argv, char** envp){
   arguments* args = parse_args(argc, argv);
 
-  FILE* out_file = fopen(args->output_file, "w");
-
-  if(!out_file) {
-    printf("Error, failed to open file\n");
-    return -1;
-  }
-
   for(int i = 0; i < args->files_count; i++){
     if(is_dir(args->files[i])) {
       arc_header_t* hdr = malloc(sizeof(arc_header_t));
@@ -144,14 +137,10 @@ int main(int argc, char** argv, char** envp){
         printf("%02x", cksum[i]);
       }
       printf("\n");
-      fprintf(out_file, "File: %s\n", args->files[i]);
     }
   }
 
-  fclose(out_file);
-
   free(args->files);
-  //free(args->output_file);
   free(args);
 
   return 0;

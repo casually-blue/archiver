@@ -1,9 +1,10 @@
 ## HEADER
+header_size |   8 bytes
 archive_size|   8 bytes
-name_len    |   8 bytes
-name        |   (name_len) bytes
 num_entries |   8 bytes
 entries     |   (num_entries) ENTRYs
+name_len    |   8 bytes
+name        |   (name_len) bytes
 data        |   (archive_size) bytes
 
 ## ENTRY 
@@ -13,5 +14,3 @@ data_length       |   8 bytes
 checksum          |   32 bytes
 name_len          |   8 bytes
 name              |   (name_len) bytes
-
-

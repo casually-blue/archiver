@@ -44,6 +44,30 @@ char* concat_paths(char* p1, char* p2) {
   return dn;
 }
 
+file_info_node* file_info(char* path){
+  file_info_node* node = malloc(sizeof(file_info_node));
+  unsigned char cksum[32];
+  calc_checksum(path, cksum);
+
+  file_info_t* info = malloc(sizeof(file_info_t));
+
+  FILE* f = fopen(path, "r");
+  int length = get_length(f);
+  fclose(f);
+          
+  info->filename = path;
+  info->contents_length = length;
+
+  for(int i=0; i<32; i++){
+    info->checksum[i] = cksum[i];
+  }
+
+  node->is_dir = false;
+  node->self.file_info = info;
+
+  return node;
+}
+
 void output_dir(char* dirname, arc_header_t* dir_info) {
   DIR* d;
   struct dirent *dir;
@@ -56,17 +80,15 @@ void output_dir(char* dirname, arc_header_t* dir_info) {
   file_info_node* cur_node = NULL;
   file_info_node* next_node = NULL;
 
-  unsigned char cksum[32];
   if(d){
     while((dir = readdir(d)) != NULL) {
 
       char* rel_fullpath = concat_paths(dirname, dir->d_name);
       char* fullpath = realpath(rel_fullpath, NULL);
 
-      next_node = malloc(sizeof(file_info_node));       
-
       switch(dir->d_type){
         case DT_DIR:
+          next_node = malloc(sizeof(file_info_node));   
           if(strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0)
             break;
 
@@ -79,25 +101,7 @@ void output_dir(char* dirname, arc_header_t* dir_info) {
 
           break;
         case DT_REG:
-          calc_checksum(fullpath, cksum);
-
-          file_info_t* info = malloc(sizeof(file_info_t));
-
-
-          FILE* f = fopen(fullpath, "r");
-          int length = get_length(f);
-          fclose(f);
-          
-          info->filename = fullpath;
-          info->contents_length = length;
-
-          for(int i=0; i<32; i++){
-            info->checksum[i] = cksum[i];
-          }
-
-          next_node->is_dir = false;
-          next_node->self.file_info = info;
-            
+          next_node = file_info(fullpath);
           break;
         default:
           break;

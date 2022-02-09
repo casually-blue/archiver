@@ -9,3 +9,5 @@
 !.gitignore
 
 !CMakeLists.txt
+
+!structure.txt

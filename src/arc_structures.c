@@ -34,7 +34,3 @@ unsigned long get_length(FILE* f) {
 
   return end - start;  
 }
-
-void write_header(FILE* of, arc_header_t* hdr) {
-  fwrite(hdr, sizeof(arc_header_t), 1, of);  
-}

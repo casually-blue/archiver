@@ -1,0 +1,17 @@
+## HEADER
+archive_size|   8 bytes
+name_len    |   8 bytes
+name        |   (name_len) bytes
+num_entries |   8 bytes
+entries     |   (num_entries) ENTRYs
+data        |   (archive_size) bytes
+
+## ENTRY 
+next_entry_offset |   8 bytes
+is_dir            |   byte
+data_length       |   8 bytes
+checksum          |   32 bytes
+name_len          |   8 bytes
+name              |   (name_len) bytes
+
+

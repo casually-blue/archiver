@@ -32,14 +32,6 @@ bool is_dir(char* fname) {
   return false;
 }
 
-void truncate_to_n(char* fname, int len) {
-  int fd = open(fname, O_WRONLY);
-
-  ftruncate(fd, len);
-
-  close(fd);
-}
-
 char* concat_paths(char* p1, char* p2) {
   int dirnl = strlen(p1);
   int dnamel = strlen(p2);
@@ -52,42 +44,74 @@ char* concat_paths(char* p1, char* p2) {
   return dn;
 }
 
-void output_dir(char* dirname, FILE* output_buffer) {
+void output_dir(char* dirname, arc_header_t* dir_info) {
   DIR* d;
   struct dirent *dir;
   d = opendir(dirname);
 
+  dir_info->n_entries = 0;
+  dir_info->name = dirname;
+  dir_info->first = NULL;
+
+  file_info_node* cur_node = NULL;
+  file_info_node* next_node = NULL;
+
   unsigned char cksum[32];
   if(d){
     while((dir = readdir(d)) != NULL) {
+
       char* rel_fullpath = concat_paths(dirname, dir->d_name);
       char* fullpath = realpath(rel_fullpath, NULL);
+
+      next_node = malloc(sizeof(file_info_node));       
 
       switch(dir->d_type){
         case DT_DIR:
           if(strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0)
             break;
 
-          fprintf(output_buffer, "Dir: %s\n", fullpath);
-          output_dir(fullpath, output_buffer);
+          arc_header_t* dir_hdr = malloc(sizeof(arc_header_t));
+
+          output_dir(fullpath, dir_hdr);
+
+          next_node->is_dir = true;
+          next_node->self.dir_info = dir_hdr;
+
           break;
         case DT_REG:
-          printf("FILE: %s\n", dir->d_name);
           calc_checksum(fullpath, cksum);
 
-          for(int i=0; i < 32; i++){
-            printf("%02x", cksum[i]);
-          }
-          printf("\n");
+          file_info_t* info = malloc(sizeof(file_info_t));
 
-          fprintf(output_buffer, "File: %s\n", fullpath);
+
+          FILE* f = fopen(fullpath, "r");
+          int length = get_length(f);
+          fclose(f);
           
+          info->filename = fullpath;
+          info->contents_length = length;
+
+          for(int i=0; i<32; i++){
+            info->checksum[i] = cksum[i];
+          }
+
+          next_node->is_dir = false;
+          next_node->self.file_info = info;
+            
           break;
         default:
           break;
       }
 
-      free(fullpath);
+      if(dir_info->first == NULL) {
+        dir_info->first = next_node;
+        cur_node = next_node;
+      } else {
+        cur_node->next = next_node;
+       cur_node = next_node;
+      }
+
+      dir_info->n_entries += 1;
     }
   }
 }
@@ -104,7 +128,10 @@ int main(int argc, char** argv, char** envp){
 
   for(int i = 0; i < args->files_count; i++){
     if(is_dir(args->files[i])) {
-      output_dir(args->files[i], out_file);
+      arc_header_t* hdr = malloc(sizeof(arc_header_t));
+      output_dir(args->files[i], hdr);
+
+      printf("test\n");
     } else {
 
       unsigned char cksum[32] = {0};

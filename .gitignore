@@ -1,0 +1,10 @@
+*
+!src
+!src/*.c
+!src/*.h
+
+!docs
+
+!.gitignore
+
+!CMakeLists.txt

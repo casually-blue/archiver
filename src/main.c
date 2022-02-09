@@ -10,19 +10,23 @@
 
 #include "args.h"
 #include "arc_structures.h"
+#include "memmap_file.h"
+#include<stdbool.h>
 
-void print_if_dir(char* fname) {
+bool is_dir(char* fname) {
   int fd;
-  if((fd = open(fname, O_RDONLY)) <= 0) {return;}
+  if((fd = open(fname, O_RDONLY)) <= 0) {return false;}
 
   struct stat fi;
   fstat(fd, &fi);
 
+  close(fd);
+
   if (S_ISDIR(fi.st_mode)) {
-    printf("directory: %s\n", fname);
+    return true;
   }
 
-  close(fd);
+  return false;
 }
 
 void truncate_to_n(char* fname, int len) {
@@ -33,27 +37,84 @@ void truncate_to_n(char* fname, int len) {
   close(fd);
 }
 
+char* concat_paths(char* p1, char* p2) {
+  int dirnl = strlen(p1);
+  int dnamel = strlen(p2);
+  char* dn = malloc(dirnl + 1 + dnamel + 1);
+  strncpy(dn, p1, dirnl);
+  dn[dirnl] = '/';
+  strncpy(dn+dirnl+1, p2, dnamel);
+  dn[dirnl+1+dnamel] = 0;
+
+  return dn;
+}
+
+void output_dir(char* dirname, FILE* output_buffer) {
+  DIR* d;
+  struct dirent *dir;
+  d = opendir(dirname);
+
+  unsigned char cksum[32];
+  if(d){
+    while((dir = readdir(d)) != NULL) {
+      char* rel_fullpath = concat_paths(dirname, dir->d_name);
+      char* fullpath = realpath(rel_fullpath, NULL);
+
+      switch(dir->d_type){
+        case DT_DIR:
+          if(strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0)
+            break;
+
+          fprintf(output_buffer, "Dir: %s\n", fullpath);
+          output_dir(fullpath, output_buffer);
+          break;
+        case DT_REG:
+          printf("FILE: %s\n", dir->d_name);
+          calc_checksum(fullpath, cksum);
+
+          for(int i=0; i < 32; i++){
+            printf("%02x", cksum[i]);
+          }
+          printf("\n");
+
+          fprintf(output_buffer, "File: %s\n", fullpath);
+          
+          break;
+        default:
+          break;
+      }
+
+      free(fullpath);
+    }
+  }
+}
+
 int main(int argc, char** argv, char** envp){
   arguments* args = parse_args(argc, argv);
 
-  char* map = memmap_file(args->output_file);
+  FILE* out_file = fopen(args->output_file, "w");
 
-  if(!map) {
-    printf("Error, failed to map file\n");
+  if(!out_file) {
+    printf("Error, failed to open file\n");
     return -1;
   }
 
-  int current_position = 0;
-
   for(int i = 0; i < args->files_count; i++){
-      print_if_dir(args->files[i]);
+    if(is_dir(args->files[i])) {
+      output_dir(args->files[i], out_file);
+    } else {
 
-      current_position += sprintf(map+current_position, "%s: %d\n", args->files[i], current_position);
+      unsigned char cksum[32] = {0};
+      calc_checksum(args->files[i], cksum);
+      for(int i=0; i< 32; i++){
+        printf("%02x", cksum[i]);
+      }
+      printf("\n");
+      fprintf(out_file, "File: %s\n", args->files[i]);
+    }
   }
 
-  munmap(map, 20);
-
-  truncate_to_n(args->output_file, current_position);
+  fclose(out_file);
 
   free(args->files);
   //free(args->output_file);

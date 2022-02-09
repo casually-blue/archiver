@@ -1,21 +1,16 @@
 #pragma once
 #include<stdbool.h>
+#include<stdio.h>
 
 typedef struct {
-  bool is_dir;
-  char *filename;
-
-  void* data_start;
-  void* data_end;
-
-  struct fileinfo* next_file;
-} fileinfo;
-
-typedef struct {
-  unsigned long magic;
-  unsigned short contents_length;
-
-  fileinfo *first_file;
+  bool is_nested;
+  unsigned int n_entries;
 } arc_header_t;
 
-void* memmap_file(char* filename);
+typedef struct {
+  char checksum[32];
+  unsigned long contents_length;
+} file_info_t;
+
+void calc_checksum(char* fname, unsigned char checksum_data[32]);
+unsigned long get_length(FILE* f);

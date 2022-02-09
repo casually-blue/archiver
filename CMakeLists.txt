@@ -4,6 +4,8 @@ project(arc)
 
 set(CMAKE_C_FLAGS "-g -Wall -Werror")
 
+link_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs)
+
 add_executable(arc
   src/main.c 
 
@@ -15,9 +17,12 @@ add_executable(arc
 
   src/memmap_file.h
   src/memmap_file.c
+
+  src/varray.h
+  src/astring.h
 )
 
-target_link_libraries(arc crypto)
+target_link_libraries(arc crypto astring varray)
 
 option(BUILD_DOC "Build documentation" ON)
 

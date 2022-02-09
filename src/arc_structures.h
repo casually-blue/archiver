@@ -7,11 +7,13 @@
 #include<stdbool.h>
 #include<stdio.h>
 
+#include"varray.h"
+
 typedef struct {
-  unsigned int n_entries;
   unsigned int namelen;
   char* name;
-  struct file_info_node* first;
+
+  Varray entries;
 } arc_header_t;
 
 typedef struct file_info_t {
@@ -27,8 +29,6 @@ typedef struct file_info_node {
     file_info_t* file_info;
     arc_header_t* dir_info;
   } self;
-
-  struct file_info_node* next;
 } file_info_node;
 
 /** 

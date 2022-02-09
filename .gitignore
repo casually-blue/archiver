@@ -4,6 +4,7 @@
 !src/*.h
 
 !docs
+!docs/Doxyfile.in
 
 !.gitignore
 

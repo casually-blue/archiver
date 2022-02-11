@@ -55,5 +55,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     hdr.output_to(&mut file)?;
 
+    file.sync_all()?;
+
+    let mut file = File::open(hdr.name.clone())?;
+    let h = ArchiveHeader::read_from(&mut file)?;
+
+    println!("{:?}", h);
+
     Ok(())
 }

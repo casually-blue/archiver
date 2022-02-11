@@ -4,6 +4,7 @@ use sha2::Digest;
 use std::fs::File;
 use std::io::copy;
 use std::io::Write;
+use std::io::Read;
 
 use std::error::Error;
 
@@ -11,6 +12,15 @@ use std::error::Error;
 pub enum ArchiveEntry {
     FileEntry {name: String, checksum: [u8;32], file_length: u64},
     DirEntry(ArchiveHeader),
+}
+
+impl ArchiveEntry {
+    pub fn length(&self) -> u64 {
+        match self {
+            Self::DirEntry(entr) => entr.length_of_archive(),
+            Self::FileEntry{name: _,checksum: _, file_length} => *file_length
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -100,11 +110,60 @@ impl ToBytes for u8 {
 }
 
 impl ArchiveHeader {
+    pub fn length_of_archive(&self) -> u64 {
+        self.length + self.entries.iter().fold(0, |a, e| {
+            a + e.length()
+        })
 
-    pub fn output_to<T: Write>(&mut self, file: &mut T) -> Result<(), Box<dyn Error>> {
-        file.write(&(self.name.len() as u64).to_le_bytes())?;
-        file.write(self.name.as_bytes())?;
-        file.write(&(self.entries.len() as u64).to_le_bytes())?;
+    }
+
+    pub fn read_from<T: Read>(reader: &mut T) -> Result<Self, Box<dyn Error>> {
+        let mut uintbuf: [u8; 8] = [0; 8];
+        let _ = reader.read(&mut uintbuf)?;
+
+        let name_len = u64::from_le_bytes(uintbuf);
+        let mut name_bytes = vec![0; name_len as usize];
+        let _ = reader.read(&mut name_bytes)?;
+        let name = String::from_utf8(name_bytes)?;
+
+        let mut entries = vec![];
+        let _ = reader.read(&mut uintbuf)?;
+        let entries_len = u64::from_le_bytes(uintbuf);
+        for _ in 0..entries_len {
+            let _ = reader.read(&mut uintbuf)?;
+            let mut boolb = [0; 1];
+            let _ = reader.read(&mut boolb)?;
+            let is_dir =  match boolb[0] {
+                0 => false,
+                _ => true,
+            };
+
+            let _  = reader.read(&mut uintbuf)?;
+            let file_length = u64::from_le_bytes(uintbuf);
+            let mut csumbuf: [u8; 32] = [0; 32];
+            let _ = reader.read(&mut csumbuf);
+
+            let _ = reader.read(&mut uintbuf);
+            let name_length = u64::from_le_bytes(uintbuf);
+            let mut name_bytes = vec![0; name_length as usize];
+            let _ = reader.read(&mut name_bytes);
+            let name = String::from_utf8(name_bytes)?;
+
+            match is_dir {
+                false => {
+                    entries.push(ArchiveEntry::FileEntry{name, checksum: csumbuf, file_length});
+                }
+                _ => todo!()
+            }
+        }
+        Ok(Self{name, entries, length: 0})
+
+    }
+
+    pub fn output_to<T: Write>(&mut self, writer: &mut T) -> Result<(), Box<dyn Error>> {
+        writer.write(&(self.name.len() as u64).to_le_bytes())?;
+        writer.write(self.name.as_bytes())?;
+        writer.write(&(self.entries.len() as u64).to_le_bytes())?;
 
         for e in self.entries.iter() {
             match e.clone() {
@@ -116,13 +175,21 @@ impl ArchiveHeader {
                     data.write(&(name.len() as u64).to_le_bytes())?;
                     data.write(name.as_bytes())?;
 
-                    file.write(&((data.len() + 8) as u64).to_le_bytes())?;
-                    file.write(&(*data))?;
+                    writer.write(&((data.len() + 8) as u64).to_le_bytes())?;
+                    writer.write(&(*data))?;
                 },
                 ArchiveEntry::DirEntry(entry) => {
                     let mut data: Vec<u8> = vec![];
                     data.write(&(true as u8).to_le_bytes())?;
-                    data.write(&entry.length.to_le_bytes())?;
+                    data.write(&entry.length_of_archive().to_le_bytes())?;
+                    for _ in 0..32 {
+                        data.write(&(0 as u8).to_le_bytes())?;
+                    }
+                    data.write(&(entry.name.len() as u64).to_le_bytes())?;
+                    data.write(entry.name.as_bytes())?;
+
+                    writer.write(&((data.len() + 8) as u64).to_le_bytes())?;
+                    writer.write(&(*data))?;
                 },
             }
         }

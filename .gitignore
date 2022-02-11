@@ -1,2 +1,11 @@
-Cargo.lock
-target
+*
+
+!.gitignore
+!Cargo.toml
+
+!src
+!src/*.rs
+
+!LICENSE
+!README.md
+

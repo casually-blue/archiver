@@ -1,9 +1,5 @@
 use clap::Parser;
 
-use serde::Serializer;
-use serde::Serialize;
-use serde::ser::SerializeStruct;
-use serde::ser::SerializeStructVariant;
 use sha2::Sha256;
 use sha2::Digest;
 use std::fs::File;
@@ -16,27 +12,6 @@ use std::error::Error;
 enum ArchiveEntry {
     FileEntry {name: String, checksum: [u8;32], file_length: u64},
     DirEntry(ArchiveHeader),
-}
-
-impl Serialize for ArchiveEntry {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
-        match self {
-            Self::FileEntry { name, checksum, file_length } => {
-                let mut state = serializer.serialize_struct_variant("Entry", 0, "FileEntry", 3)?;
-                state.serialize_field("name", name)?;
-                state.serialize_field("checksum", checksum)?;
-                state.serialize_field("file_length", file_length)?;
-                state.end()
-            },
-            Self::DirEntry(hdr) => {
-                let mut state = serializer.serialize_struct_variant("Entry", 1, "DirEntry", 1)?;
-                state.serialize_field("hdr", &hdr)?;
-                state.end()
-
-            }
-        }
-
-    }
 }
 
 #[derive(Debug)]
@@ -95,18 +70,6 @@ pub struct ArchiveHeader {
     entries: Vec<Box<ArchiveEntry>>
 }
 
-impl Serialize for ArchiveHeader {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> 
-        where S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("Archive", 2)?;
-        state.serialize_field("name", &self.name)?;
-        state.serialize_field("entries", &self.entries)?;
-        state.end()
-    }
-
-}
-
 pub trait ToBytes {
     fn to_le_bytes(self) -> Box<[u8]>;
     fn to_be_bytes(self) -> Box<[u8]>;
@@ -153,10 +116,10 @@ impl ArchiveHeader {
                     data.write(&(name.len() as u64).to_le_bytes())?;
                     data.write(&(name.as_bytes()))?;
 
-                    file.write(&((data.len() + 8) as u64).to_le_bytes())?;
+                    file.write(&(((data.len() + 8) as u64)).to_le_bytes())?;
                     file.write(&(*data))?;
                 },
-                ArchiveEntry::DirEntry(_) => {
+                ArchiveEntry::DirEntry(_entry) => {
                 },
             }
         }

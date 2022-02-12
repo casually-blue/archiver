@@ -2,8 +2,9 @@ use clap::Parser;
 
 use std::{
     fs::File,
-    error::Error
 };
+
+use std::error::Error;
 
 mod archive;
 use archive::*;
@@ -26,8 +27,12 @@ pub struct Args {
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
+    let default_name = args.files.get(0).unwrap().to_string() + ".arc";
+    let default_name = std::path::Path::new(default_name.as_str()).file_name().unwrap().to_str().unwrap();
+    let name = args.output_file.unwrap_or(default_name.into());
+
     let mut hdr = ArchiveHeader {
-        name: args.output_file.unwrap_or(args.files.get(0).unwrap().to_string() + ".arc"),
+        name,
         entries: vec![],
         length: 0,
     };

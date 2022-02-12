@@ -150,10 +150,8 @@ impl ArchiveHeader {
             let name = String::from_utf8(name_bytes)?;
 
             match is_dir {
-                false => {
-                    entries.push(ArchiveEntry::FileEntry{name, checksum: csumbuf, file_length});
-                }
-                _ => todo!()
+                false => entries.push(ArchiveEntry::FileEntry{name, checksum: csumbuf, file_length}),
+                true => entries.push(ArchiveEntry::DirEntry(ArchiveHeader{name, entries: vec![], length: file_length}))
             }
         }
         Ok(Self{name, entries, length: 0})
